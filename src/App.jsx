@@ -27,7 +27,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     try {
-        return new Date(dateStr).toLocaleString('pt-BR', {
+        // Tentativa de tratar datas no formato brasileiro (DD/MM/YYYY, HH:mm:ss)
+        if (typeof dateStr === 'string' && dateStr.includes('/') && dateStr.includes(',')) {
+            const [datePart, timePart] = dateStr.split(', ');
+            const [day, month, year] = datePart.split('/');
+            const isoStr = `${year}-${month}-${day}T${timePart.trim()}`;
+            const d = new Date(isoStr);
+            if (!isNaN(d.getTime())) return d.toLocaleString('pt-BR');
+        }
+
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+
+        return d.toLocaleString('pt-BR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -195,7 +207,7 @@ function App() {
             }
             await new Promise(r => setTimeout(r, 1000));
         }
-        saveToHistory({ id: Date.now(), timestamp: new Date().toLocaleString(), total: selected.length, success: sCount, error: eCount, contacts: results });
+        saveToHistory({ id: Date.now(), timestamp: new Date().toISOString(), total: selected.length, success: sCount, error: eCount, contacts: results });
         setSending(false);
         setStatus({ type: sCount > 0 ? 'success' : 'error', message: `Finalizado. Sucesso: ${sCount}, Falha: ${eCount}` });
     };
@@ -440,17 +452,15 @@ function App() {
     );
 
     const renderHistoryView = () => (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full dashboard-width mx-auto pt-10 px-4 pb-20">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full pt-10 px-4 pb-20">
             {selectedHistory ? (
-                <div className="space-y-10">
-                    <div className="flex justify-between items-center">
+                <div className="detail-container">
+                    <div className="history-header-actions">
                         <button
                             onClick={() => setSelectedHistory(null)}
-                            className="flex items-center gap-3 text-slate-500 hover:text-white transition-all text-[11px] font-black uppercase tracking-[0.2em] group"
+                            className="btn-back"
                         >
-                            <div className="w-8 h-8 rounded-lg border border-white/5 flex items-center justify-center group-hover:border-indigo-500/30 group-hover:bg-indigo-500/5 transition-all">
-                                <ArrowLeft className="w-4 h-4" />
-                            </div>
+                            <ArrowLeft className="w-4 h-4" />
                             Voltar para lista
                         </button>
                         <button onClick={syncResponses} disabled={syncing} className="btn-primary py-3 px-6 text-[11px]">
@@ -460,39 +470,38 @@ function App() {
                     </div>
 
                     <div className="card-premium overflow-hidden border-white/[0.03]">
-                        <div className="p-10 border-b border-white/5 bg-white/[0.01]">
-                            <div className="flex items-center gap-6 mb-10">
-                                <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
-                                    <Calendar className="w-6 h-6 text-indigo-400" />
+                        <div className="p-8 md:p-10 border-b border-white/5 bg-white/[0.01]">
+                            <div className="history-detail-main-info">
+                                <div className="history-icon-bg">
+                                    <Calendar className="w-8 h-8 text-indigo-400" />
                                 </div>
-                                <div>
-                                    <h3 className="text-3xl font-black text-white italic uppercase tracking-tighter">Histórico de Envios</h3>
-                                    <p className="text-sm text-slate-500 font-bold">{formatDate(selectedHistory.timestamp)}</p>
+                                <div className="history-title-group">
+                                    <h3>Histórico de Envios</h3>
+                                    <p className="history-date-subtitle">{formatDate(selectedHistory.timestamp)}</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="p-6 bg-white/[0.02] rounded-2xl border border-white/5 shadow-inner">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em]">Total Processado</p>
-                                    <p className="text-4xl font-black text-white mt-2 leading-none">{selectedHistory.total}</p>
-                                </div>
-                                <div className="p-6 bg-emerald-500/[0.03] rounded-2xl border border-emerald-500/10 shadow-inner">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                        </div>
-                                        <p className="text-emerald-500/60 text-[9px] uppercase font-black tracking-[0.2em]">Sucesso</p>
+                            <div className="stats-grid">
+                                <div className="stat-card stat-card-total">
+                                    <div className="stat-icon-wrapper">
+                                        <LayoutDashboard className="w-5 h-5" />
                                     </div>
-                                    <p className="text-4xl font-black text-emerald-400 leading-none">{selectedHistory.success}</p>
+                                    <span className="stat-label">Total Processado</span>
+                                    <p className="stat-value">{selectedHistory.total || 0}</p>
                                 </div>
-                                <div className="p-6 bg-rose-500/[0.03] rounded-2xl border border-rose-500/10 shadow-inner">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-6 h-6 bg-rose-500/10 rounded-lg flex items-center justify-center border border-rose-500/20">
-                                            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                                        </div>
-                                        <p className="text-rose-500/60 text-[9px] uppercase font-black tracking-[0.2em]">Falha</p>
+                                <div className="stat-card stat-card-success">
+                                    <div className="stat-icon-wrapper">
+                                        <CheckCircle2 className="w-5 h-5" />
                                     </div>
-                                    <p className="text-4xl font-black text-rose-400 leading-none">{selectedHistory.error}</p>
+                                    <span className="stat-label">Sucesso</span>
+                                    <p className="stat-value">{selectedHistory.success || 0}</p>
+                                </div>
+                                <div className="stat-card stat-card-error">
+                                    <div className="stat-icon-wrapper">
+                                        <AlertCircle className="w-5 h-5" />
+                                    </div>
+                                    <span className="stat-label">Falha</span>
+                                    <p className="stat-value">{selectedHistory.error || 0}</p>
                                 </div>
                             </div>
                         </div>
