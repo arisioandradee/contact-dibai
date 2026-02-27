@@ -64,14 +64,34 @@ function App() {
             if (error) throw error;
 
             if (data && data.length > 0) {
-                // Mescla os dados (usando ID ou timestamp como critério)
-                // Para simplificar, priorizamos o que vem do banco se houver dados lá
-                // Garantimos que 'contacts' seja sempre um array
-                const sanitizedData = data.map(item => ({
+                // 3. Mescla os dados (Removendo duplicatas por ID ou Timestamp)
+                // Garantimos que 'contacts' seja sempre um array em todos os itens
+                const sanitizedCloud = data.map(item => ({
                     ...item,
                     contacts: Array.isArray(item.contacts) ? item.contacts : []
                 }));
-                setHistory(sanitizedData);
+
+                // Estratégia de Mesclagem: Criamos um Map usando ID como chave para evitar duplicatas
+                // A ordem importa: o que está no Banco sobrepõe o que está local se os IDs baterem
+                const combinedMap = new Map();
+
+                // Primeiro adicionamos os locais
+                localData.forEach(item => {
+                    if (item.id) combinedMap.set(item.id.toString(), item);
+                });
+
+                // Depois os da nuvem (que ganham prioridade se o ID for igual)
+                sanitizedCloud.forEach(item => {
+                    if (item.id) combinedMap.set(item.id.toString(), item);
+                });
+
+                // Converte de volta para array e ordena por data (mais recente primeiro)
+                const mergedHistory = Array.from(combinedMap.values()).sort((a, b) => {
+                    return new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at);
+                });
+
+                setHistory(mergedHistory);
+                localStorage.setItem('disparo_history', JSON.stringify(mergedHistory));
             } else {
                 setHistory(localData);
             }
