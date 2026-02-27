@@ -122,6 +122,23 @@ function App() {
         } catch (e) { }
     };
 
+    const handleClearHistory = async () => {
+        if (!window.confirm('Tem certeza que deseja limpar todo o histórico? Esta ação é irreversível.')) return;
+        setLoading(true);
+        try {
+            localStorage.removeItem('disparo_history');
+            const { error } = await supabase.from('wa_envios_per').delete().neq('id', 0);
+            if (error) throw error;
+            setHistory([]);
+            setStatus({ type: 'success', message: 'Histórico limpo com sucesso!' });
+        } catch (e) {
+            setHistory([]); // Limpa local mesmo se falhar nuvem
+            setStatus({ type: 'error', message: 'Histórico local limpo, mas erro ao limpar nuvem.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -433,33 +450,43 @@ function App() {
                     </div>
                 </div>
             ) : (
-                <div className="history-list">
-                    {history && history.length > 0 ? history.map((item, idx) => (
-                        <div key={item.id || idx} onClick={() => setSelectedHistory(item)} className="history-item-card">
-                            <div className="history-item-main">
-                                <div className="history-item-icon"><Calendar className="w-6 h-6" /></div>
-                                <div className="history-item-content">
-                                    <h4>Envio {formatDate(item.timestamp)}</h4>
-                                    <div className="history-item-details">
-                                        <p className="history-item-subtitle">{item.total || 0} Leads</p>
-                                        <div className="history-item-dot" />
-                                        <p className="history-item-subtitle">Sincronizado</p>
+                <div className="detail-container">
+                    <div className="history-header-actions" style={{ justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                        {history && history.length > 0 && (
+                            <button onClick={handleClearHistory} className="btn-cancel" style={{ fontSize: '0.7rem', padding: '0.75rem 1.25rem' }}>
+                                <Trash2 className="w-4 h-4 text-rose-500" />
+                                Limpar Histórico
+                            </button>
+                        )}
+                    </div>
+                    <div className="history-list">
+                        {history && history.length > 0 ? history.map((item, idx) => (
+                            <div key={item.id || idx} onClick={() => setSelectedHistory(item)} className="history-item-card">
+                                <div className="history-item-main">
+                                    <div className="history-item-icon"><Calendar className="w-6 h-6" /></div>
+                                    <div className="history-item-content">
+                                        <h4>Envio {formatDate(item.timestamp)}</h4>
+                                        <div className="history-item-details">
+                                            <p className="history-item-subtitle">{item.total || 0} Leads</p>
+                                            <div className="history-item-dot" />
+                                            <p className="history-item-subtitle">Sincronizado</p>
+                                        </div>
                                     </div>
                                 </div>
+                                <div className="history-item-stats-strip">
+                                    <div className="compact-stat compact-stat-total"><span className="compact-stat-label">Total</span><span className="compact-stat-value">{item.total || 0}</span></div>
+                                    <div className="compact-stat compact-stat-success"><span className="compact-stat-label">Sucesso</span><span className="compact-stat-value">{item.success || 0}</span></div>
+                                    <div className="compact-stat compact-stat-error"><span className="compact-stat-label">Falha</span><span className="compact-stat-value">{item.error || 0}</span></div>
+                                </div>
+                                <div className="history-item-arrow-wrapper"><ChevronRight className="w-5 h-5" /></div>
                             </div>
-                            <div className="history-item-stats-strip">
-                                <div className="compact-stat compact-stat-total"><span className="compact-stat-label">Total</span><span className="compact-stat-value">{item.total || 0}</span></div>
-                                <div className="compact-stat compact-stat-success"><span className="compact-stat-label">Sucesso</span><span className="compact-stat-value">{item.success || 0}</span></div>
-                                <div className="compact-stat compact-stat-error"><span className="compact-stat-label">Falha</span><span className="compact-stat-value">{item.error || 0}</span></div>
+                        )) : (
+                            <div className="col-span-full py-40 text-center opacity-20">
+                                <History className="w-20 h-20 mx-auto mb-6 text-slate-500" />
+                                <p className="font-black uppercase tracking-[0.4em] text-slate-400 text-sm">Nenhum Histórico Encontrado</p>
                             </div>
-                            <div className="history-item-arrow-wrapper"><ChevronRight className="w-5 h-5" /></div>
-                        </div>
-                    )) : (
-                        <div className="col-span-full py-40 text-center opacity-20">
-                            <History className="w-20 h-20 mx-auto mb-6 text-slate-500" />
-                            <p className="font-black uppercase tracking-[0.4em] text-slate-400 text-sm">Nenhum Histórico Encontrado</p>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             )}
         </motion.div>
