@@ -27,7 +27,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     try {
-        // Tentativa de tratar datas no formato brasileiro (DD/MM/YYYY, HH:mm:ss)
         if (typeof dateStr === 'string' && dateStr.includes('/') && dateStr.includes(',')) {
             const [datePart, timePart] = dateStr.split(', ');
             const [day, month, year] = datePart.split('/');
@@ -63,11 +62,8 @@ function App() {
     const [selectedHistory, setSelectedHistory] = useState(null);
 
     const fetchHistory = async () => {
-        // 1. Carrega o que está guardado localmente (Histórico antigo)
         const localData = JSON.parse(localStorage.getItem('disparo_history') || '[]');
-
         try {
-            // 2. Tenta buscar o que está na nuvem
             const { data, error } = await supabase
                 .from('wa_envios_per')
                 .select('*')
@@ -76,39 +72,22 @@ function App() {
             if (error) throw error;
 
             if (data && data.length > 0) {
-                // 3. Mescla os dados (Removendo duplicatas por ID ou Timestamp)
-                // Garantimos que 'contacts' seja sempre um array em todos os itens
                 const sanitizedCloud = data.map(item => ({
                     ...item,
                     contacts: Array.isArray(item.contacts) ? item.contacts : []
                 }));
-
-                // Estratégia de Mesclagem: Criamos um Map usando ID como chave para evitar duplicatas
-                // A ordem importa: o que está no Banco sobrepõe o que está local se os IDs baterem
                 const combinedMap = new Map();
-
-                // Primeiro adicionamos os locais
-                localData.forEach(item => {
-                    if (item.id) combinedMap.set(item.id.toString(), item);
-                });
-
-                // Depois os da nuvem (que ganham prioridade se o ID for igual)
-                sanitizedCloud.forEach(item => {
-                    if (item.id) combinedMap.set(item.id.toString(), item);
-                });
-
-                // Converte de volta para array e ordena por data (mais recente primeiro)
+                localData.forEach(item => { if (item.id) combinedMap.set(item.id.toString(), item); });
+                sanitizedCloud.forEach(item => { if (item.id) combinedMap.set(item.id.toString(), item); });
                 const mergedHistory = Array.from(combinedMap.values()).sort((a, b) => {
                     return new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at);
                 });
-
                 setHistory(mergedHistory);
                 localStorage.setItem('disparo_history', JSON.stringify(mergedHistory));
             } else {
                 setHistory(localData);
             }
         } catch (e) {
-            console.warn('Usando apenas histórico local (Nuvem indisponível para leitura)');
             setHistory(localData);
         }
     };
@@ -118,13 +97,11 @@ function App() {
     }, []);
 
     const saveToHistory = async (newEntry) => {
-        // 1. SALVAMENTO LOCAL IMEDIATO
         const entryToSave = { ...newEntry, id: newEntry.id || Date.now() };
         const updatedHistory = [entryToSave, ...history];
         setHistory(updatedHistory);
         localStorage.setItem('disparo_history', JSON.stringify(updatedHistory));
 
-        // 2. TENTATIVA DE SYNC EM BACKGROUND
         try {
             const { error: rpcError } = await supabase.rpc('save_history_v3', {
                 payload: {
@@ -134,7 +111,6 @@ function App() {
                     contacts: newEntry.contacts
                 }
             });
-
             if (rpcError) {
                 await supabase.from('wa_envios_per').insert([{
                     total: newEntry.total,
@@ -143,9 +119,7 @@ function App() {
                     contacts: newEntry.contacts
                 }]);
             }
-        } catch (e) {
-            // Silencioso em produção para não poluir o console
-        }
+        } catch (e) { }
     };
 
     const handleFileUpload = (e) => {
@@ -223,15 +197,11 @@ function App() {
             updated.forEach(c => {
                 let p = c.whatsapp_socio.toString().replace(/\D/g, '');
                 if (p.startsWith('55')) p = p.substring(2);
-
-                // Variantes para o mesmo número (com e sem o 9 extra se for Brasil)
                 if (p.length === 11 && p[2] === '9') {
-                    // Tem o 9 extra: Adiciona versão com 9 e versão sem 9
                     const with9 = '55' + p;
                     const without9 = '55' + p.substring(0, 2) + p.substring(3);
                     searchVariants.push(with9, without9);
                 } else if (p.length === 10) {
-                    // Não tem o 9 extra: Adiciona versão sem 9 e versão com 9
                     const without9 = '55' + p;
                     const with9 = '55' + p.substring(0, 2) + '9' + p.substring(2);
                     searchVariants.push(without9, with9);
@@ -239,12 +209,6 @@ function App() {
                     searchVariants.push('55' + p);
                 }
             });
-
-            // Diagnóstico: Ver o que tem na tabela pra entender o formato (received_at em vez de created_at)
-            // const { data: sample } = await supabase.from('wa_disparo_respostas')
-            //     .select('phone, text_content, received_at')
-            //     .limit(5)
-            //     .order('received_at', { ascending: false });
 
             const { data } = await supabase.from('wa_disparo_respostas')
                 .select('phone, text_content')
@@ -254,52 +218,32 @@ function App() {
             if (data) {
                 for (let i = 0; i < updated.length; i++) {
                     const cleanExcelPhone = updated[i].whatsapp_socio.toString().replace(/\D/g, '');
-                    const excelSuffix = cleanExcelPhone.slice(-8); // Pega os últimos 8 dígitos (Mais seguro para BR)
-
-                    // Filtra todas as respostas deste número
+                    const excelSuffix = cleanExcelPhone.slice(-8);
                     const contactData = data.filter(r => {
                         const cleanDbPhone = r.phone.replace(/\D/g, '');
                         return cleanDbPhone.endsWith(excelSuffix);
                     });
 
                     if (contactData.length > 0) {
-                        // Procura se alguma de todas as respostas contém "sim"
                         const hasSim = contactData.some(r => r.text_content.toLowerCase().includes('sim'));
                         const hasNao = contactData.some(r => r.text_content.toLowerCase().includes('não') || r.text_content.toLowerCase().includes('nao'));
-
-                        // Pega a última resposta textual para mostrar (já ordenado por received_at desc)
                         const lastResp = contactData[0];
 
-                        if (hasSim) {
-                            updated[i].status = 'confirmed';
-                            changed = true;
-                        } else if (hasNao) {
-                            updated[i].status = 'denied';
-                            changed = true;
-                        }
-
+                        if (hasSim) { updated[i].status = 'confirmed'; changed = true; }
+                        else if (hasNao) { updated[i].status = 'denied'; changed = true; }
                         updated[i].response = lastResp.text_content;
                     }
                 }
             }
-        } catch (e) { /* Erro silencioso em produção */ }
+        } catch (e) { }
         if (changed) {
-            // 1. ATUALIZAÇÃO LOCAL IMEDIATA
             const updatedHistory = history.map(h => h.id === selectedHistory.id ? { ...h, contacts: updated } : h);
             setHistory(updatedHistory);
             localStorage.setItem('disparo_history', JSON.stringify(updatedHistory));
             setSelectedHistory({ ...selectedHistory, contacts: updated });
-
             try {
-                // 2. TENTATIVA DE SYNC EM BACKGROUND
-                await supabase
-                    .from('wa_envios_per')
-                    .update({ contacts: updated })
-                    .eq('id', selectedHistory.id);
-                console.log('☁️ Sincronizado com a nuvem (update)');
-            } catch (e) {
-                console.warn('⚠️ Erro ao sincronizar update na nuvem (404). Mantido local.');
-            }
+                await supabase.from('wa_envios_per').update({ contacts: updated }).eq('id', selectedHistory.id);
+            } catch (e) { }
         }
         setSyncing(false);
     };
@@ -311,11 +255,8 @@ function App() {
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === contacts.length && contacts.length > 0) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(contacts.map(c => c.id)));
-        }
+        if (selectedIds.size === contacts.length && contacts.length > 0) { setSelectedIds(new Set()); }
+        else { setSelectedIds(new Set(contacts.map(c => c.id))); }
     };
 
     const handleCancel = (e) => {
@@ -327,16 +268,12 @@ function App() {
 
     const renderBroadcastView = () => (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full pt-10 pb-20 flex flex-col items-center">
-
-
-            {/* Upload Box */}
             <div className="dashboard-width">
                 <div
                     className="upload-container group border-white/[0.03] bg-white/[0.01]"
                     onClick={() => contacts.length === 0 && document.getElementById('file-upload').click()}
                 >
                     <input id="file-upload" type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden-input" />
-
                     {contacts.length > 0 ? (
                         <div className="space-y-6">
                             <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto border border-indigo-500/20">
@@ -345,10 +282,7 @@ function App() {
                             <div className="space-y-4">
                                 <h3 className="text-2xl font-black text-white italic uppercase tracking-tight">{contacts.length} Leads Carregados</h3>
                                 <div className="flex justify-center">
-                                    <button
-                                        onClick={handleCancel}
-                                        className="btn-cancel"
-                                    >
+                                    <button onClick={handleCancel} className="btn-cancel">
                                         <Trash2 className="w-4 h-4" />
                                         Cancelar Importação
                                     </button>
@@ -369,7 +303,6 @@ function App() {
                 </div>
             </div>
 
-            {/* Status Message */}
             {status.message && (
                 <div className="dashboard-width px-4">
                     <div className={`badge ${status.type === 'success' ? 'badge-success' : 'badge-error'} w-full justify-center p-4 !rounded-xl`}>
@@ -379,14 +312,10 @@ function App() {
                 </div>
             )}
 
-            {/* Footer Actions (Floating) */}
             {contacts.length > 0 && (
                 <div className="dashboard-width px-4">
                     <div className="card-footer py-6 border-t border-white/[0.02]">
-                        <button
-                            onClick={toggleSelectAll}
-                            className="btn-secondary"
-                        >
+                        <button onClick={toggleSelectAll} className="btn-secondary">
                             {selectedIds.size === contacts.length && contacts.length > 0 ? (
                                 <CheckCircle2 className="w-4 h-4 text-indigo-400" />
                             ) : (
@@ -395,11 +324,7 @@ function App() {
                             <span className="uppercase tracking-widest text-[11px] font-black">Selecionar Todos</span>
                         </button>
 
-                        <button
-                            className="btn-primary"
-                            onClick={sendMessages}
-                            disabled={selectedIds.size === 0 || sending}
-                        >
+                        <button className="btn-primary" onClick={sendMessages} disabled={selectedIds.size === 0 || sending}>
                             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                             <span className="uppercase tracking-[0.2em] text-[11px] font-black">Iniciar Disparos</span>
                         </button>
@@ -407,23 +332,11 @@ function App() {
                 </div>
             )}
 
-            {/* Leads List after import */}
             {contacts.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-8 dashboard-width card-premium overflow-hidden border-white/[0.03]"
-                >
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-8 dashboard-width card-premium overflow-hidden border-white/[0.03]">
                     <div className="max-h-[500px] overflow-y-auto">
                         <table className="premium-table">
-                            <thead>
-                                <tr>
-                                    <th className="w-10"></th>
-                                    <th>Lead / Empresa</th>
-                                    <th>WhatsApp</th>
-                                    <th className="text-right">Status</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th className="w-10"></th><th>Lead / Empresa</th><th>WhatsApp</th><th className="text-right">Status</th></tr></thead>
                             <tbody>
                                 {contacts.map(c => (
                                     <tr key={c.id}>
@@ -456,12 +369,8 @@ function App() {
             {selectedHistory ? (
                 <div className="detail-container">
                     <div className="history-header-actions">
-                        <button
-                            onClick={() => setSelectedHistory(null)}
-                            className="btn-back"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Voltar para lista
+                        <button onClick={() => setSelectedHistory(null)} className="btn-back">
+                            <ArrowLeft className="w-4 h-4" /> Voltar para lista
                         </button>
                         <button onClick={syncResponses} disabled={syncing} className="btn-primary py-3 px-6 text-[11px]">
                             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
@@ -472,34 +381,25 @@ function App() {
                     <div className="card-premium overflow-hidden border-white/[0.03]">
                         <div className="p-8 md:p-10 border-b border-white/5 bg-white/[0.01]">
                             <div className="history-detail-main-info">
-                                <div className="history-icon-bg">
-                                    <Calendar className="w-8 h-8 text-indigo-400" />
-                                </div>
+                                <div className="history-icon-bg"><Calendar className="w-8 h-8 text-indigo-400" /></div>
                                 <div className="history-title-group">
                                     <h3>Histórico de Envios</h3>
                                     <p className="history-date-subtitle">{formatDate(selectedHistory.timestamp)}</p>
                                 </div>
                             </div>
-
                             <div className="stats-grid">
                                 <div className="stat-card stat-card-total">
-                                    <div className="stat-icon-wrapper">
-                                        <LayoutDashboard className="w-5 h-5" />
-                                    </div>
+                                    <div className="stat-icon-wrapper"><LayoutDashboard className="w-5 h-5" /></div>
                                     <span className="stat-label">Total Processado</span>
                                     <p className="stat-value">{selectedHistory.total || 0}</p>
                                 </div>
                                 <div className="stat-card stat-card-success">
-                                    <div className="stat-icon-wrapper">
-                                        <CheckCircle2 className="w-5 h-5" />
-                                    </div>
+                                    <div className="stat-icon-wrapper"><CheckCircle2 className="w-5 h-5" /></div>
                                     <span className="stat-label">Sucesso</span>
                                     <p className="stat-value">{selectedHistory.success || 0}</p>
                                 </div>
                                 <div className="stat-card stat-card-error">
-                                    <div className="stat-icon-wrapper">
-                                        <AlertCircle className="w-5 h-5" />
-                                    </div>
+                                    <div className="stat-icon-wrapper"><AlertCircle className="w-5 h-5" /></div>
                                     <span className="stat-label">Falha</span>
                                     <p className="stat-value">{selectedHistory.error || 0}</p>
                                 </div>
@@ -508,13 +408,7 @@ function App() {
 
                         <div className="max-h-[600px] overflow-y-auto">
                             <table className="premium-table">
-                                <thead>
-                                    <tr>
-                                        <th>Lead / Empresa</th>
-                                        <th>Status de Envio</th>
-                                        <th className="text-right">Última Resposta</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>Lead / Empresa</th><th>Status de Envio</th><th className="text-right">Última Resposta</th></tr></thead>
                                 <tbody>
                                     {(selectedHistory.contacts || []).map((c, i) => (
                                         <tr key={i}>
@@ -530,9 +424,7 @@ function App() {
                                                     {c.status === 'error' && <span className="badge badge-error px-4 py-1.5 !rounded-lg text-[10px]">Falha</span>}
                                                 </div>
                                             </td>
-                                            <td className="text-right">
-                                                <span className="text-xs text-slate-400 font-medium italic">{c.response || '-'}</span>
-                                            </td>
+                                            <td className="text-right"><span className="text-xs text-slate-400 font-medium italic">{c.response || '-'}</span></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -541,63 +433,31 @@ function App() {
                     </div>
                 </div>
             ) : (
-                <div className="flex flex-col gap-12">
+                <div className="history-list">
                     {history && history.length > 0 ? history.map((item, idx) => (
-                        <div
-                            key={item.id || idx}
-                            onClick={() => {
-                                setSelectedHistory(item);
-                            }}
-                            className="card-premium p-10 cursor-pointer hover:border-indigo-500/30 hover:bg-white/[0.02] transition-all group flex flex-row items-center justify-between gap-10 border-white/[0.03] w-full"
-                        >
-                            {/* Card Content (Rest of the previous code) */}
-                            <div className="flex items-center gap-8">
-                                <div className="w-16 h-16 bg-indigo-500/5 rounded-2xl flex items-center justify-center border border-indigo-500/10 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/30 transition-all">
-                                    <Calendar className="w-8 h-8 text-indigo-400" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h4 className="font-black text-2xl text-white italic uppercase tracking-tight">Envio {formatDate(item.timestamp)}</h4>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">{item.total || 0} LEADS PROCESSADOS</p>
+                        <div key={item.id || idx} onClick={() => setSelectedHistory(item)} className="history-item-card">
+                            <div className="history-item-main">
+                                <div className="history-item-icon"><Calendar className="w-6 h-6" /></div>
+                                <div className="history-item-content">
+                                    <h4>Envio {formatDate(item.timestamp)}</h4>
+                                    <div className="history-item-details">
+                                        <p className="history-item-subtitle">{item.total || 0} Leads</p>
+                                        <div className="history-item-dot" />
+                                        <p className="history-item-subtitle">Sincronizado</p>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-10 bg-white/[0.02] p-5 px-8 rounded-3xl border border-white/[0.05] shadow-inner">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
-                                        <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-tight">Sucesso</p>
-                                        <p className="text-2xl font-black text-emerald-400 leading-none mt-1">{item.success || 0}</p>
-                                    </div>
-                                </div>
-
-                                <div className="w-px h-12 bg-white/10" />
-
-                                <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-lg shadow-rose-500/5">
-                                        <AlertCircle className="w-6 h-6 text-rose-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-tight">Falha</p>
-                                        <p className="text-2xl font-black text-rose-400 leading-none mt-1">{item.error || 0}</p>
-                                    </div>
-                                </div>
+                            <div className="history-item-stats-strip">
+                                <div className="compact-stat compact-stat-total"><span className="compact-stat-label">Total</span><span className="compact-stat-value">{item.total || 0}</span></div>
+                                <div className="compact-stat compact-stat-success"><span className="compact-stat-label">Sucesso</span><span className="compact-stat-value">{item.success || 0}</span></div>
+                                <div className="compact-stat compact-stat-error"><span className="compact-stat-label">Falha</span><span className="compact-stat-value">{item.error || 0}</span></div>
                             </div>
-
-                            <div className="flex items-center justify-end px-4">
-                                <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center border border-white/5 group-hover:border-indigo-500/30 transition-all">
-                                    <ChevronRight className="w-6 h-6 text-white/20 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                                </div>
-                            </div>
+                            <div className="history-item-arrow-wrapper"><ChevronRight className="w-5 h-5" /></div>
                         </div>
                     )) : (
                         <div className="col-span-full py-40 text-center opacity-20">
                             <History className="w-20 h-20 mx-auto mb-6 text-slate-500" />
-                            <p className="font-black uppercase tracking-[0.4em] text-slate-400 text-sm">Nenhum Histórico Encontrado (Check v1.1)</p>
+                            <p className="font-black uppercase tracking-[0.4em] text-slate-400 text-sm">Nenhum Histórico Encontrado</p>
                         </div>
                     )}
                 </div>
@@ -607,20 +467,16 @@ function App() {
 
     return (
         <div id="app-container" className="relative">
-            <div className="glow-spot glow-top-right" />
-            <div className="glow-spot glow-bottom-left" />
-
+            <div className="glow-spot glow-top-right" /><div className="glow-spot glow-bottom-left" />
             <header className="app-header">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="main-title">Contact <span className="font-light opacity-30 px-1">|</span> <span className="accent-title">Dibai</span> Sales</h1>
                 </motion.div>
-
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="tab-container">
                     <button onClick={() => setView('importacao')} className={`tab-btn ${view === 'importacao' ? 'active' : ''}`}><Upload className="w-4 h-4" /> Importação</button>
                     <button onClick={() => setView('history')} className={`tab-btn ${view === 'history' ? 'active' : ''}`}><History className="w-4 h-4" /> Histórico</button>
                 </motion.div>
             </header>
-
             <main className="w-full flex flex-col items-center">
                 {view === 'importacao' ? renderBroadcastView() : renderHistoryView()}
             </main>
