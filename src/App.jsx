@@ -66,7 +66,12 @@ function App() {
             if (data && data.length > 0) {
                 // Mescla os dados (usando ID ou timestamp como critério)
                 // Para simplificar, priorizamos o que vem do banco se houver dados lá
-                setHistory(data);
+                // Garantimos que 'contacts' seja sempre um array
+                const sanitizedData = data.map(item => ({
+                    ...item,
+                    contacts: Array.isArray(item.contacts) ? item.contacts : []
+                }));
+                setHistory(sanitizedData);
             } else {
                 setHistory(localData);
             }
@@ -178,7 +183,8 @@ function App() {
     const syncResponses = async () => {
         if (!selectedHistory) return;
         setSyncing(true);
-        const updated = [...selectedHistory.contacts];
+        const contactsArray = Array.isArray(selectedHistory.contacts) ? selectedHistory.contacts : [];
+        const updated = [...contactsArray];
         let changed = false;
         try {
             const searchVariants = [];
@@ -481,7 +487,7 @@ function App() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {selectedHistory.contacts.map((c, i) => (
+                                    {(selectedHistory.contacts || []).map((c, i) => (
                                         <tr key={i}>
                                             <td>
                                                 <div className="font-bold text-white mb-0.5">{c.nome_socio}</div>
