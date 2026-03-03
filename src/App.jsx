@@ -183,7 +183,7 @@ function App() {
                 const response = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Client-Token': FIXED_CLIENT_TOKEN },
-                    body: JSON.stringify({ phone, message: `Olá ${contact.nome_socio}, da ${contact.nome_empresa}?\n\nResponda Sim ou Não.` })
+                    body: JSON.stringify({ phone, message: `Olá! Tudo bem? Neste número falo com ${contact.nome_socio}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.` })
                 });
                 if (response.ok) {
                     sCount++; results.push({ ...contact, status: 'success' });
