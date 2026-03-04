@@ -60,6 +60,7 @@ function App() {
     const [view, setView] = useState('importacao'); // 'importacao' or 'history'
     const [history, setHistory] = useState([]);
     const [selectedHistory, setSelectedHistory] = useState(null);
+    const [spreadsheetType, setSpreadsheetType] = useState('melhor_lead'); // 'melhor_lead' or 'modelo_basico'
 
     const fetchHistory = async () => {
         const localData = JSON.parse(localStorage.getItem('disparo_history') || '[]');
@@ -150,13 +151,32 @@ function App() {
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
-                const mapped = data.map((row, index) => ({
-                    id: index,
-                    nome_socio: row.whatsapp_socio_nome || row.nome_socio || 'N/A',
-                    whatsapp_socio: row.whatsapp_socio || '',
-                    nome_empresa: row.nome_fantasia || row.nome_empresa || 'N/A',
-                    status: 'pending'
-                })).filter(c => c.whatsapp_socio);
+                let mapped;
+                if (spreadsheetType === 'melhor_lead') {
+                    mapped = data.map((row, index) => ({
+                        id: index,
+                        nome_socio: row.whatsapp_socio_nome || row.nome_socio || 'N/A',
+                        whatsapp_socio: row.whatsapp_socio || '',
+                        nome_empresa: row.nome_fantasia || row.nome_empresa || 'N/A',
+                        status: 'pending'
+                    })).filter(c => c.whatsapp_socio);
+                } else if (spreadsheetType === 'inlead') {
+                    mapped = data.map((row, index) => ({
+                        id: index,
+                        nome_socio: row.Nome || row.nome || 'N/A',
+                        whatsapp_socio: row.Numero || row.numero || '',
+                        nome_empresa: row.Canal || row.canal || 'N/A',
+                        status: 'pending'
+                    })).filter(c => c.whatsapp_socio);
+                } else {
+                    mapped = data.map((row, index) => ({
+                        id: index,
+                        nome_socio: row.Nome || row.nome || 'N/A',
+                        whatsapp_socio: row.Numero || row.numero || row.WhatsApp || row.whatsapp || '',
+                        nome_empresa: 'N/A',
+                        status: 'pending'
+                    })).filter(c => c.whatsapp_socio);
+                }
                 setContacts(mapped);
                 setSelectedIds(new Set(mapped.map(c => c.id)));
             } catch (err) {
@@ -180,10 +200,18 @@ function App() {
                 if (phone.length === 10 || phone.length === 11) phone = '55' + phone;
                 const instanceId = import.meta.env.VITE_Z_API_INSTANCE_ID || '3EEA3D99189391BBC88ABED0B6A7ED81';
                 const token = import.meta.env.VITE_Z_API_TOKEN || '6B110D271420AD0C3E76AA6E';
+
+                let message = '';
+                if (spreadsheetType === 'melhor_lead') {
+                    message = `Olá! Tudo bem? Neste número falo com ${contact.nome_socio}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`;
+                } else {
+                    message = `Oi, ${contact.nome_socio}! Tudo Bem?\nVocê chegou a conversar com o Daniel da Nexus há um tempo sobre geração de leads, mas o projeto não seguiu na época.\n\nDe lá pra cá, mudou algo na estratégia comercial de vocês?\nSe fizer sentido, posso te atualizar rapidamente sobre o que estamos fazendo hoje.`;
+                }
+
                 const response = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Client-Token': FIXED_CLIENT_TOKEN },
-                    body: JSON.stringify({ phone, message: `Olá! Tudo bem? Neste número falo com ${contact.nome_socio}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.` })
+                    body: JSON.stringify({ phone, message })
                 });
                 if (response.ok) {
                     sCount++; results.push({ ...contact, status: 'success' });
@@ -285,6 +313,32 @@ function App() {
 
     const renderBroadcastView = () => (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full pt-10 pb-20 flex flex-col items-center">
+            <div className="dashboard-width mb-8">
+                <div className="flex flex-col items-center space-y-4">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Tipo de Planilha</span>
+                    <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/[0.05]">
+                        <button
+                            onClick={() => setSpreadsheetType('melhor_lead')}
+                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'melhor_lead' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            Melhor Lead
+                        </button>
+                        <button
+                            onClick={() => setSpreadsheetType('modelo_basico')}
+                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'modelo_basico' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            Modelo Básico
+                        </button>
+                        <button
+                            onClick={() => setSpreadsheetType('inlead')}
+                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'inlead' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            Inlead
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="dashboard-width">
                 <div
                     className="upload-container group border-white/[0.03] bg-white/[0.01]"
@@ -313,7 +367,13 @@ function App() {
                             </div>
                             <div className="space-y-2 px-6">
                                 <h3 className="text-xl font-black text-white italic uppercase tracking-tight">Upar Planilha</h3>
-                                <p className="text-sm text-slate-500 font-medium">Arraste ou selecione sua planilha extraída na Ferramenta Melhor Lead.</p>
+                                <p className="text-sm text-slate-500 font-medium">
+                                    {spreadsheetType === 'melhor_lead'
+                                        ? 'Arraste ou selecione sua planilha extraída na Ferramenta Melhor Lead.'
+                                        : spreadsheetType === 'inlead'
+                                            ? 'Arraste ou selecione sua planilha Inlead (Nome, Numero, Email, Canal).'
+                                            : 'Arraste ou selecione sua planilha no Modelo Básico (Nome, Numero).'}
+                                </p>
                             </div>
                         </div>
                     )}
