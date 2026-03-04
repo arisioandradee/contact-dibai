@@ -160,20 +160,13 @@ function App() {
                         nome_empresa: row.nome_fantasia || row.nome_empresa || 'N/A',
                         status: 'pending'
                     })).filter(c => c.whatsapp_socio);
-                } else if (spreadsheetType === 'inlead') {
-                    mapped = data.map((row, index) => ({
-                        id: index,
-                        nome_socio: row.Nome || row.nome || 'N/A',
-                        whatsapp_socio: row.Numero || row.numero || '',
-                        nome_empresa: row.Canal || row.canal || 'N/A',
-                        status: 'pending'
-                    })).filter(c => c.whatsapp_socio);
                 } else {
+                    // Modelo Básico (handles both original and Inlead-style columns)
                     mapped = data.map((row, index) => ({
                         id: index,
                         nome_socio: row.Nome || row.nome || 'N/A',
                         whatsapp_socio: row.Numero || row.numero || row.WhatsApp || row.whatsapp || '',
-                        nome_empresa: 'N/A',
+                        nome_empresa: row.Canal || row.canal || 'N/A',
                         status: 'pending'
                     })).filter(c => c.whatsapp_socio);
                 }
@@ -319,21 +312,15 @@ function App() {
                     <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/[0.05]">
                         <button
                             onClick={() => setSpreadsheetType('melhor_lead')}
-                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'melhor_lead' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`tab-btn ${spreadsheetType === 'melhor_lead' ? 'active' : ''}`}
                         >
                             Melhor Lead
                         </button>
                         <button
                             onClick={() => setSpreadsheetType('modelo_basico')}
-                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'modelo_basico' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                            className={`tab-btn ${spreadsheetType === 'modelo_basico' ? 'active' : ''}`}
                         >
                             Modelo Básico
-                        </button>
-                        <button
-                            onClick={() => setSpreadsheetType('inlead')}
-                            className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${spreadsheetType === 'inlead' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                            Inlead
                         </button>
                     </div>
                 </div>
@@ -370,9 +357,7 @@ function App() {
                                 <p className="text-sm text-slate-500 font-medium">
                                     {spreadsheetType === 'melhor_lead'
                                         ? 'Arraste ou selecione sua planilha extraída na Ferramenta Melhor Lead.'
-                                        : spreadsheetType === 'inlead'
-                                            ? 'Arraste ou selecione sua planilha Inlead (Nome, Numero, Email, Canal).'
-                                            : 'Arraste ou selecione sua planilha no Modelo Básico (Nome, Numero).'}
+                                        : 'Arraste ou selecione sua planilha no Modelo Básico (Nome, Numero, Canal).'}
                                 </p>
                             </div>
                         </div>
