@@ -423,11 +423,11 @@ function App() {
                                 <textarea
                                     value={customMessage}
                                     onChange={(e) => setCustomMessage(e.target.value)}
-                                    className="relative w-full h-48 bg-[#05060b]/50 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/30 transition-all resize-none leading-relaxed placeholder:text-slate-700"
+                                    className="relative w-full h-[400px] bg-[#05060b]/50 border border-white/5 rounded-2xl p-8 text-xl text-slate-200 focus:outline-none focus:border-indigo-500/30 transition-all resize-none leading-[1.6] placeholder:text-slate-700 font-medium"
                                     placeholder="Escreva sua mensagem aqui... Use {{nome}} e {{empresa}} para dados dinâmicos."
                                 />
-                                <div className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 pointer-events-none">
-                                    Editor Smart
+                                <div className="absolute bottom-6 right-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 pointer-events-none bg-[#05060b]/80 px-3 py-1 rounded-full backdrop-blur-sm border border-white/5">
+                                    Editor Smart v2
                                 </div>
                             </div>
                         </div>
