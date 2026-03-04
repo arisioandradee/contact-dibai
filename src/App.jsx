@@ -61,6 +61,12 @@ function App() {
     const [history, setHistory] = useState([]);
     const [selectedHistory, setSelectedHistory] = useState(null);
     const [spreadsheetType, setSpreadsheetType] = useState('melhor_lead'); // 'melhor_lead' or 'modelo_basico'
+    const [customMessage, setCustomMessage] = useState('');
+
+    const DEFAULT_MESSAGES = {
+        melhor_lead: `Olá! Tudo bem? Neste número falo com {{nome}}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`,
+        modelo_basico: `Oi, {{nome}}! Tudo Bem?\nVocê chegou a conversar com o Daniel da Nexus há um tempo sobre geração de leads, mas o projeto não seguiu na época.\n\nDe lá pra cá, mudou algo na estratégia comercial de vocês?\nSe fizer sentido, posso te atualizar rapidamente sobre o que estamos fazendo hoje.`
+    };
 
     const fetchHistory = async () => {
         const localData = JSON.parse(localStorage.getItem('disparo_history') || '[]');
@@ -96,6 +102,10 @@ function App() {
     useEffect(() => {
         fetchHistory();
     }, []);
+
+    useEffect(() => {
+        setCustomMessage(DEFAULT_MESSAGES[spreadsheetType] || '');
+    }, [spreadsheetType]);
 
     const saveToHistory = async (newEntry) => {
         const entryToSave = { ...newEntry, id: newEntry.id || Date.now() };
@@ -194,12 +204,9 @@ function App() {
                 const instanceId = import.meta.env.VITE_Z_API_INSTANCE_ID || '3EEA3D99189391BBC88ABED0B6A7ED81';
                 const token = import.meta.env.VITE_Z_API_TOKEN || '6B110D271420AD0C3E76AA6E';
 
-                let message = '';
-                if (spreadsheetType === 'melhor_lead') {
-                    message = `Olá! Tudo bem? Neste número falo com ${contact.nome_socio}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`;
-                } else {
-                    message = `Oi, ${contact.nome_socio}! Tudo Bem?\nVocê chegou a conversar com o Daniel da Nexus há um tempo sobre geração de leads, mas o projeto não seguiu na época.\n\nDe lá pra cá, mudou algo na estratégia comercial de vocês?\nSe fizer sentido, posso te atualizar rapidamente sobre o que estamos fazendo hoje.`;
-                }
+                let message = customMessage
+                    .replace(/{{nome}}/g, contact.nome_socio)
+                    .replace(/{{empresa}}/g, contact.nome_empresa);
 
                 const response = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`, {
                     method: 'POST',
@@ -370,6 +377,40 @@ function App() {
                     <div className={`badge ${status.type === 'success' ? 'badge-success' : 'badge-error'} w-full justify-center p-4 !rounded-xl`}>
                         {status.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                         <span className="font-bold uppercase tracking-widest text-[10px]">{status.message}</span>
+                    </div>
+                </div>
+            )}
+
+            {contacts.length > 0 && (
+                <div className="dashboard-width px-4 mt-8">
+                    <div className="card-premium p-8 border-white/[0.03] bg-white/[0.01]">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Sparkles className="w-5 h-5 text-indigo-400" />
+                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">Personalizar Mensagem</h3>
+                        </div>
+                        <div className="space-y-4">
+                            <textarea
+                                value={customMessage}
+                                onChange={(e) => setCustomMessage(e.target.value)}
+                                className="w-full h-32 bg-white/[0.03] border border-white/[0.05] rounded-xl p-4 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none"
+                                placeholder="Digite sua mensagem aqui..."
+                            />
+                            <div className="flex flex-wrap gap-2">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">Variáveis:</span>
+                                <button
+                                    onClick={() => setCustomMessage(prev => prev + ' {{nome}}')}
+                                    className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
+                                >
+                                    + {{ nome }}
+                                </button>
+                                <button
+                                    onClick={() => setCustomMessage(prev => prev + ' {{empresa}}')}
+                                    className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
+                                >
+                                    + {{ empresa }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
