@@ -383,35 +383,55 @@ function App() {
 
             {contacts.length > 0 && (
                 <div className="dashboard-width px-4 mt-8">
-                    <div className="card-premium p-8 border-white/[0.03] bg-white/[0.01]">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Sparkles className="w-5 h-5 text-indigo-400" />
-                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white">Personalizar Mensagem</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <textarea
-                                value={customMessage}
-                                onChange={(e) => setCustomMessage(e.target.value)}
-                                className="w-full h-32 bg-white/[0.03] border border-white/[0.05] rounded-xl p-4 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none"
-                                placeholder="Digite sua mensagem aqui..."
-                            />
-                            <div className="flex flex-wrap gap-2">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">Variáveis:</span>
-                                <button
-                                    onClick={() => setCustomMessage(prev => prev + ' {{nome}}')}
-                                    className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
-                                >
-                                    + {'{{nome}}'}
-                                </button>
-                                <button
-                                    onClick={() => setCustomMessage(prev => prev + ' {{empresa}}')}
-                                    className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
-                                >
-                                    + {'{{empresa}}'}
-                                </button>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="card-premium overflow-hidden border-white/[0.03] bg-gradient-to-b from-white/[0.02] to-transparent"
+                    >
+                        <div className="p-8 md:p-10">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20">
+                                        <Sparkles className="w-6 h-6 text-indigo-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black text-white italic uppercase tracking-tight">Personalizar Mensagem</h3>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Crie um template único para seus leads</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setCustomMessage(prev => prev + ' {{nome}}')}
+                                        className="btn-secondary !py-2 !px-4 !rounded-xl !text-[10px] !gap-2 group"
+                                    >
+                                        <span className="text-indigo-400 group-hover:scale-110 transition-transform">+</span>
+                                        <span className="font-black uppercase tracking-widest">Nome do Sócio</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setCustomMessage(prev => prev + ' {{empresa}}')}
+                                        className="btn-secondary !py-2 !px-4 !rounded-xl !text-[10px] !gap-2 group"
+                                    >
+                                        <span className="text-indigo-400 group-hover:scale-110 transition-transform">+</span>
+                                        <span className="font-black uppercase tracking-widest">Empresa</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="relative group">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
+                                <textarea
+                                    value={customMessage}
+                                    onChange={(e) => setCustomMessage(e.target.value)}
+                                    className="relative w-full h-48 bg-[#05060b]/50 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/30 transition-all resize-none leading-relaxed placeholder:text-slate-700"
+                                    placeholder="Escreva sua mensagem aqui... Use {{nome}} e {{empresa}} para dados dinâmicos."
+                                />
+                                <div className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 pointer-events-none">
+                                    Editor Smart
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
