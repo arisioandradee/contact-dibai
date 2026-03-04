@@ -401,13 +401,13 @@ function App() {
                                     onClick={() => setCustomMessage(prev => prev + ' {{nome}}')}
                                     className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
                                 >
-                                    + {{ nome }}
+                                    + {'{{nome}}'}
                                 </button>
                                 <button
                                     onClick={() => setCustomMessage(prev => prev + ' {{empresa}}')}
                                     className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-indigo-400 hover:bg-white/10 transition-colors"
                                 >
-                                    + {{ empresa }}
+                                    + {'{{empresa}}'}
                                 </button>
                             </div>
                         </div>
