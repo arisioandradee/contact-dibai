@@ -15,7 +15,11 @@ import {
     Check,
     Trash2,
     Cloud,
-    LayoutDashboard
+    LayoutDashboard,
+    PlusCircle,
+    User,
+    Phone,
+    Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -60,12 +64,14 @@ function App() {
     const [view, setView] = useState('importacao'); // 'importacao' or 'history'
     const [history, setHistory] = useState([]);
     const [selectedHistory, setSelectedHistory] = useState(null);
-    const [spreadsheetType, setSpreadsheetType] = useState('melhor_lead'); // 'melhor_lead' or 'modelo_basico'
+    const [spreadsheetType, setSpreadsheetType] = useState('melhor_lead'); // 'melhor_lead', 'modelo_basico', or 'manual'
     const [customMessage, setCustomMessage] = useState('');
+    const [manualContact, setManualContact] = useState({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
 
     const DEFAULT_MESSAGES = {
         melhor_lead: `Olá! Tudo bem? Neste número falo com {{nome}}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`,
-        modelo_basico: `Oi, {{nome}}! Tudo Bem?\nVocê chegou a conversar com o Daniel da Nexus há um tempo sobre geração de leads, mas o projeto não seguiu na época.\n\nDe lá pra cá, mudou algo na estratégia comercial de vocês?\nSe fizer sentido, posso te atualizar rapidamente sobre o que estamos fazendo hoje.`
+        modelo_basico: `Oi, {{nome}}! Tudo Bem?\nVocê chegou a conversar com o Daniel da Nexus há um tempo sobre geração de leads, mas o projeto não seguiu na época.\n\nDe lá pra cá, mudou algo na estratégia comercial de vocês?\nSe fizer sentido, posso te atualizar rapidamente sobre o que estamos fazendo hoje.`,
+        manual: `Olá! Tudo bem? Neste número falo com {{nome}}?`
     };
 
     const fetchHistory = async () => {
@@ -329,6 +335,12 @@ function App() {
                         >
                             Modelo Básico
                         </button>
+                        <button
+                            onClick={() => setSpreadsheetType('manual')}
+                            className={`tab-btn ${spreadsheetType === 'manual' ? 'active' : ''}`}
+                        >
+                            <PlusCircle className="w-3.5 h-3.5 mr-1" /> Manual
+                        </button>
                     </div>
                 </div>
             </div>
@@ -336,10 +348,83 @@ function App() {
             <div className="dashboard-width">
                 <div
                     className="upload-container group border-white/[0.03] bg-white/[0.01]"
-                    onClick={() => contacts.length === 0 && document.getElementById('file-upload').click()}
+                    onClick={() => spreadsheetType !== 'manual' && contacts.length === 0 && document.getElementById('file-upload').click()}
                 >
                     <input id="file-upload" type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden-input" />
-                    {contacts.length > 0 ? (
+                    {spreadsheetType === 'manual' ? (
+                        <div className="w-full space-y-8 p-6">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
+                                    <PlusCircle className="w-5 h-5 text-indigo-400" />
+                                </div>
+                                <h3 className="text-xl font-black text-white italic uppercase tracking-tight">Adicionar Lead Manual</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                        <User className="w-3 h-3" /> Nome do Sócio
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: João Silva"
+                                        value={manualContact.nome_socio}
+                                        onChange={(e) => setManualContact({ ...manualContact, nome_socio: e.target.value })}
+                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                        <Building2 className="w-3 h-3" /> Empresa
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Minha Empresa LTDA"
+                                        value={manualContact.nome_empresa}
+                                        onChange={(e) => setManualContact({ ...manualContact, nome_empresa: e.target.value })}
+                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                        <Phone className="w-3 h-3" /> WhatsApp
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: 11999999999"
+                                        value={manualContact.whatsapp_socio}
+                                        onChange={(e) => setManualContact({ ...manualContact, whatsapp_socio: e.target.value })}
+                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!manualContact.nome_socio || !manualContact.whatsapp_socio) {
+                                            setStatus({ type: 'error', message: 'Preencha Nome e WhatsApp' });
+                                            return;
+                                        }
+                                        const newContact = {
+                                            id: Date.now(),
+                                            ...manualContact,
+                                            status: 'pending'
+                                        };
+                                        setContacts(prev => [...prev, newContact]);
+                                        setSelectedIds(prev => new Set([...prev, newContact.id]));
+                                        setManualContact({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
+                                        setStatus({ type: 'success', message: 'Lead adicionado!' });
+                                    }}
+                                    className="btn-primary !px-8 !py-3"
+                                >
+                                    <PlusCircle className="w-4 h-4" />
+                                    <span className="font-black uppercase tracking-widest text-[11px]">Adicionar Lead</span>
+                                </button>
+                            </div>
+                        </div>
+                    ) : contacts.length > 0 ? (
                         <div className="space-y-6">
                             <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto border border-indigo-500/20">
                                 <CheckCircle2 className="w-7 h-7 text-indigo-400" />
