@@ -68,7 +68,9 @@ function App() {
     const [manualMode, setManualMode] = useState('individual'); // 'individual' or 'bulk'
     const [customMessage, setCustomMessage] = useState('');
     const [manualContact, setManualContact] = useState({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
-    const [bulkText, setBulkText] = useState('');
+    const [bulkNames, setBulkNames] = useState('');
+    const [bulkCompanies, setBulkCompanies] = useState('');
+    const [bulkPhones, setBulkPhones] = useState('');
 
     const DEFAULT_MESSAGES = {
         melhor_lead: `Olá! Tudo bem? Neste número falo com {{nome}}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`,
@@ -420,16 +422,42 @@ function App() {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <FileText className="w-3 h-3" /> Cole sua lista (Um por linha: Nome; Empresa; Telefone)
-                                    </label>
-                                    <textarea
-                                        placeholder="João Silva; Minha Empresa; 11999999999&#10;Maria Santos; Loja ABC; 11888888888"
-                                        value={bulkText}
-                                        onChange={(e) => setBulkText(e.target.value)}
-                                        className="w-full h-40 bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all font-mono text-xs resize-none"
-                                    />
-                                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Formatos aceitos: Nome;Empresa;Telefone OU Nome;Telefone</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                                <User className="w-3 h-3" /> Nomes (Um por linha)
+                                            </label>
+                                            <textarea
+                                                placeholder="João Silva&#10;Maria Santos"
+                                                value={bulkNames}
+                                                onChange={(e) => setBulkNames(e.target.value)}
+                                                className="w-full h-60 bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all font-mono text-xs resize-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                                <Building2 className="w-3 h-3" /> Empresas (Um por linha)
+                                            </label>
+                                            <textarea
+                                                placeholder="Empresa A&#10;Empresa B"
+                                                value={bulkCompanies}
+                                                onChange={(e) => setBulkCompanies(e.target.value)}
+                                                className="w-full h-60 bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all font-mono text-xs resize-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                                <Phone className="w-3 h-3" /> Telefones (Um por linha)
+                                            </label>
+                                            <textarea
+                                                placeholder="11999999999&#10;11888888888"
+                                                value={bulkPhones}
+                                                onChange={(e) => setBulkPhones(e.target.value)}
+                                                className="w-full h-60 bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all font-mono text-xs resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest text-center">Os dados serão pareados por linha. O telefone é obrigatório.</p>
                                 </div>
                             )}
 
@@ -448,24 +476,28 @@ function App() {
                                             setManualContact({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
                                             setStatus({ type: 'success', message: 'Lead adicionado!' });
                                         } else {
-                                            const lines = bulkText.split('\n').filter(l => l.trim());
-                                            if (lines.length === 0) {
-                                                setStatus({ type: 'error', message: 'Cole pelo menos uma linha' });
-                                                return;
+                                            const names = bulkNames.split('\n');
+                                            const companies = bulkCompanies.split('\n');
+                                            const phones = bulkPhones.split('\n');
+
+                                            const maxLines = Math.max(names.length, companies.length, phones.length);
+                                            const newContacts = [];
+
+                                            for (let i = 0; i < maxLines; i++) {
+                                                const phone = (phones[i] || '').trim();
+                                                if (phone) {
+                                                    newContacts.push({
+                                                        id: Date.now() + i,
+                                                        nome_socio: (names[i] || '').trim() || 'N/A',
+                                                        nome_empresa: (companies[i] || '').trim() || 'N/A',
+                                                        whatsapp_socio: phone,
+                                                        status: 'pending'
+                                                    });
+                                                }
                                             }
-                                            const newContacts = lines.map((line, idx) => {
-                                                const parts = line.split(/[;|,]/).map(p => p.trim());
-                                                return {
-                                                    id: Date.now() + idx,
-                                                    nome_socio: parts[0] || 'N/A',
-                                                    nome_empresa: parts.length > 2 ? parts[1] : (parts.length === 2 ? 'N/A' : 'N/A'),
-                                                    whatsapp_socio: parts.length > 2 ? parts[2] : (parts.length === 2 ? parts[1] : ''),
-                                                    status: 'pending'
-                                                };
-                                            }).filter(c => c.whatsapp_socio);
 
                                             if (newContacts.length === 0) {
-                                                setStatus({ type: 'error', message: 'Nenhum lead válido encontrado' });
+                                                setStatus({ type: 'error', message: 'Nenhum lead com telefone encontrado' });
                                                 return;
                                             }
 
@@ -475,7 +507,9 @@ function App() {
                                                 newContacts.forEach(c => next.add(c.id));
                                                 return next;
                                             });
-                                            setBulkText('');
+                                            setBulkNames('');
+                                            setBulkCompanies('');
+                                            setBulkPhones('');
                                             setStatus({ type: 'success', message: `${newContacts.length} leads adicionados!` });
                                         }
                                     }}
