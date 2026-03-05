@@ -65,8 +65,10 @@ function App() {
     const [history, setHistory] = useState([]);
     const [selectedHistory, setSelectedHistory] = useState(null);
     const [spreadsheetType, setSpreadsheetType] = useState('melhor_lead'); // 'melhor_lead', 'modelo_basico', or 'manual'
+    const [manualMode, setManualMode] = useState('individual'); // 'individual' or 'bulk'
     const [customMessage, setCustomMessage] = useState('');
     const [manualContact, setManualContact] = useState({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
+    const [bulkText, setBulkText] = useState('');
 
     const DEFAULT_MESSAGES = {
         melhor_lead: `Olá! Tudo bem? Neste número falo com {{nome}}?\n\nRecebi seu contato para entender melhor sobre o produto de tecnologia de vocês e como funciona hoje.`,
@@ -353,74 +355,136 @@ function App() {
                     <input id="file-upload" type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden-input" />
                     {spreadsheetType === 'manual' ? (
                         <div className="w-full space-y-8 p-6">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
-                                    <PlusCircle className="w-5 h-5 text-indigo-400" />
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
+                                        <PlusCircle className="w-5 h-5 text-indigo-400" />
+                                    </div>
+                                    <h3 className="text-xl font-black text-white italic uppercase tracking-tight">Adicionar Leads</h3>
                                 </div>
-                                <h3 className="text-xl font-black text-white italic uppercase tracking-tight">Adicionar Lead Manual</h3>
+
+                                <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/[0.05]">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setManualMode('individual'); }}
+                                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${manualMode === 'individual' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        Individual
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setManualMode('bulk'); }}
+                                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${manualMode === 'bulk' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        Em Massa
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <User className="w-3 h-3" /> Nome do Sócio
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ex: João Silva"
-                                        value={manualContact.nome_socio}
-                                        onChange={(e) => setManualContact({ ...manualContact, nome_socio: e.target.value })}
-                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
-                                    />
+                            {manualMode === 'individual' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                            <User className="w-3 h-3" /> Nome do Sócio
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: João Silva"
+                                            value={manualContact.nome_socio}
+                                            onChange={(e) => setManualContact({ ...manualContact, nome_socio: e.target.value })}
+                                            className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                            <Building2 className="w-3 h-3" /> Empresa
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: Minha Empresa LTDA"
+                                            value={manualContact.nome_empresa}
+                                            onChange={(e) => setManualContact({ ...manualContact, nome_empresa: e.target.value })}
+                                            className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                            <Phone className="w-3 h-3" /> WhatsApp
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: 11999999999"
+                                            value={manualContact.whatsapp_socio}
+                                            onChange={(e) => setManualContact({ ...manualContact, whatsapp_socio: e.target.value })}
+                                            className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
+                            ) : (
+                                <div className="space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Building2 className="w-3 h-3" /> Empresa
+                                        <FileText className="w-3 h-3" /> Cole sua lista (Um por linha: Nome; Empresa; Telefone)
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ex: Minha Empresa LTDA"
-                                        value={manualContact.nome_empresa}
-                                        onChange={(e) => setManualContact({ ...manualContact, nome_empresa: e.target.value })}
-                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
+                                    <textarea
+                                        placeholder="João Silva; Minha Empresa; 11999999999&#10;Maria Santos; Loja ABC; 11888888888"
+                                        value={bulkText}
+                                        onChange={(e) => setBulkText(e.target.value)}
+                                        className="w-full h-40 bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all font-mono text-xs resize-none"
                                     />
+                                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Formatos aceitos: Nome;Empresa;Telefone OU Nome;Telefone</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                                        <Phone className="w-3 h-3" /> WhatsApp
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ex: 11999999999"
-                                        value={manualContact.whatsapp_socio}
-                                        onChange={(e) => setManualContact({ ...manualContact, whatsapp_socio: e.target.value })}
-                                        className="w-full bg-[#05060b] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-indigo-500/50 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
+                            )}
 
                             <div className="flex justify-end pt-4">
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (!manualContact.nome_socio || !manualContact.whatsapp_socio) {
-                                            setStatus({ type: 'error', message: 'Preencha Nome e WhatsApp' });
-                                            return;
+                                        if (manualMode === 'individual') {
+                                            if (!manualContact.nome_socio || !manualContact.whatsapp_socio) {
+                                                setStatus({ type: 'error', message: 'Preencha Nome e WhatsApp' });
+                                                return;
+                                            }
+                                            const newContact = { id: Date.now(), ...manualContact, status: 'pending' };
+                                            setContacts(prev => [...prev, newContact]);
+                                            setSelectedIds(prev => new Set([...prev, newContact.id]));
+                                            setManualContact({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
+                                            setStatus({ type: 'success', message: 'Lead adicionado!' });
+                                        } else {
+                                            const lines = bulkText.split('\n').filter(l => l.trim());
+                                            if (lines.length === 0) {
+                                                setStatus({ type: 'error', message: 'Cole pelo menos uma linha' });
+                                                return;
+                                            }
+                                            const newContacts = lines.map((line, idx) => {
+                                                const parts = line.split(/[;|,]/).map(p => p.trim());
+                                                return {
+                                                    id: Date.now() + idx,
+                                                    nome_socio: parts[0] || 'N/A',
+                                                    nome_empresa: parts.length > 2 ? parts[1] : (parts.length === 2 ? 'N/A' : 'N/A'),
+                                                    whatsapp_socio: parts.length > 2 ? parts[2] : (parts.length === 2 ? parts[1] : ''),
+                                                    status: 'pending'
+                                                };
+                                            }).filter(c => c.whatsapp_socio);
+
+                                            if (newContacts.length === 0) {
+                                                setStatus({ type: 'error', message: 'Nenhum lead válido encontrado' });
+                                                return;
+                                            }
+
+                                            setContacts(prev => [...prev, ...newContacts]);
+                                            setSelectedIds(prev => {
+                                                const next = new Set(prev);
+                                                newContacts.forEach(c => next.add(c.id));
+                                                return next;
+                                            });
+                                            setBulkText('');
+                                            setStatus({ type: 'success', message: `${newContacts.length} leads adicionados!` });
                                         }
-                                        const newContact = {
-                                            id: Date.now(),
-                                            ...manualContact,
-                                            status: 'pending'
-                                        };
-                                        setContacts(prev => [...prev, newContact]);
-                                        setSelectedIds(prev => new Set([...prev, newContact.id]));
-                                        setManualContact({ nome_socio: '', whatsapp_socio: '', nome_empresa: '' });
-                                        setStatus({ type: 'success', message: 'Lead adicionado!' });
                                     }}
                                     className="btn-primary !px-8 !py-3"
                                 >
                                     <PlusCircle className="w-4 h-4" />
-                                    <span className="font-black uppercase tracking-widest text-[11px]">Adicionar Lead</span>
+                                    <span className="font-black uppercase tracking-widest text-[11px]">
+                                        {manualMode === 'individual' ? 'Adicionar Lead' : 'Adicionar Lista'}
+                                    </span>
                                 </button>
                             </div>
                         </div>
